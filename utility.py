@@ -5,6 +5,9 @@ from scorev2 import calculate_score
 from time import sleep
 from datetime import datetime
 import asyncio
+from discord import Object, NotFound
+from discord.ext import commands
+from bot_config import bot
 
 rt = RhythmTyperClient()
 
@@ -141,17 +144,18 @@ def get_damage_multiplier(turn: int) -> float | int:
 
 
 def get_play_score(play: Play) -> int:
-    judgements = f"{play.perfect}/{play.good}/{play.ok}"
+    jc = play.judgements
+    judgements = f"{jc.perfect}/{jc.good}/{jc.ok}"
     max_combo = (
-            play.perfect
-            + play.good
-            + play.ok
-            + play.misses
+            jc.perfect
+            + jc.good
+            + jc.ok
+            + jc.miss
     )
 
     return calculate_score(
         judgements=judgements,
-        misses=play.misses,
+        misses=jc.miss,
         combo=play.combo,
         max_combo=max_combo
     )
@@ -225,8 +229,9 @@ def olc_peepee_logs(play1: Play, play2: Play, notes: int) -> None:
     plays = [play1, play2]
     for play in plays:
         score = get_play_score(play)
-        judgements = f"{play.perfect}/{play.good}/{play.ok}"
-        misses = f"{play.misses}"
+        jc = play.judgements
+        judgements = f"{jc.perfect}/{jc.good}/{jc.ok}"
+        misses = f"{jc.miss}"
         combo = f"{play.combo}/{notes}"
         olc_logs.extend([[score, judgements, misses, combo]])
 
@@ -249,7 +254,7 @@ async def average_sr(player_id: str) -> float | int | None:
         mod = get_mod_type(play)
 
         for beatmap in maps:
-            if beatmap["beatmap_id"] == play.beatmap_id and beatmap["difficulty"] == play.difficulty and beatmap[
+            if beatmap["beatmap_id"] == play.mapset_id and beatmap["difficulty"] == play.difficulty_name and beatmap[
                 "mod"] == mod:
                 sr += beatmap["star_rating"] * (play.acc / 95)
                 count += 1
@@ -259,3 +264,93 @@ async def average_sr(player_id: str) -> float | int | None:
         return None
 
     return sr / count
+
+
+async def andrew_resolve(msg) -> None:
+    bug_report = 1453643294977294419
+    suggestions = 1453652931046932603
+    andrew = 673247785101033473
+
+    if msg.author.id == andrew:
+        parent = getattr(msg.channel, "parent", None)
+        if "?" not in msg.content:
+
+            if getattr(parent, "id", None) == bug_report:
+                if "fixed" in msg.content.lower():
+                    await msg.channel.send("This post has been automatically marked as resolved.")
+                    resolved_tag = Object(id=1477065300980531261)
+                    await msg.channel.edit(applied_tags=[resolved_tag])
+
+            if getattr(parent, "id", None) == suggestions:
+                if "added" in msg.content.lower() or "done" in msg.content.lower():
+                    await msg.channel.send("This post has been automatically marked as resolved.")
+                    resolved_tag = Object(id=1477064650582524036)
+                    await msg.channel.edit(applied_tags=[resolved_tag])
+
+
+async def forum_scraper(ctx, channel, new_tag) -> None:
+    found = []
+    for thread in channel.threads:
+        if any(tag.id == new_tag for tag in thread.applied_tags):
+            try:
+                message = await thread.fetch_message(thread.id)
+            except NotFound:
+                message = None
+
+            if message:
+                reactions = getattr(message, "reactions", None)
+                if reactions:
+                    max_reaction = max((reaction.count for reaction in message.reactions), default=0)
+                else:
+                    max_reaction = 0
+            else:
+                max_reaction = 0
+
+            found.append((thread, max_reaction))
+
+    found_ids = {thread.id for thread, _ in found}
+    async for thread in channel.archived_threads(limit=None):
+        if thread in found_ids:
+            continue
+        if any(tag.id == new_tag for tag in thread.applied_tags):
+            try:
+                message = await thread.fetch_message(thread.id)
+            except NotFound:
+                message = None
+
+            if message:
+                reactions = getattr(message, "reactions", None)
+                if reactions:
+                    max_reaction = max((reaction.count for reaction in message.reactions), default=0)
+                else:
+                    max_reaction = 0
+            else:
+                max_reaction = 0
+
+            found.append((thread, max_reaction))
+        if len(found) == 100:
+            break
+
+    found.sort(key=lambda r: r[1], reverse=True)
+    found = found[:10]
+    message = "I am only grabbing the first 100 I see. There is likely more than 100. Here is the top 10:\n"
+    for i, (thread, count) in enumerate(found, start=1):
+        message += f"{i}. {count} - {thread.jump_url}\n"
+
+    await ctx.reply(message)
+
+
+@commands.cooldown(1, 3600, commands.BucketType.default)
+@bot.command(name="suggestions")
+async def suggestions(ctx) -> None:
+    channel = bot.get_channel(1453652931046932603)
+    new_tag = 1477067810822815754
+    await forum_scraper(ctx, channel, new_tag)
+
+
+@commands.cooldown(1, 3600, commands.BucketType.default)
+@bot.command(name="bugs")
+async def bug_reports(ctx) -> None:
+    channel = bot.get_channel(1453643294977294419)
+    new_tag = 1477067879789760662
+    await forum_scraper(ctx, channel, new_tag)

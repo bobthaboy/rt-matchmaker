@@ -23,19 +23,19 @@ class RankHistoryEntry:
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            pp=data["pp"],
+            date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
             rank=data["rank"],
-            date=datetime.strptime(data["date"], "%Y-%m-%d").date()
+            pp=data["pp"]
         )
 
 
 @dataclass
 class Play:
     score_id: str
-    beatmap_id: str
+    mapset_id: str
     beatmap_title: str
     beatmap_artist: str
-    difficulty: str
+    difficulty_name: str
     pp: float | int
     acc: float | int
     score: int
@@ -43,25 +43,16 @@ class Play:
     grade: str
     mods: list[str]
     timestamp: datetime
-    perfect: int
-    good: int
-    ok: int
-    misses: int
-    star_rating: float | int
-    length: float | int
-    od: float | int
-    bpm: float | int
-    mapper_id: str
-    mapper: str
+    judgements: Judgements
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
             score_id=data["sid"],
-            beatmap_id=data["bid"],
+            mapset_id=data["bid"],
             beatmap_title=data["bt"],
             beatmap_artist=data["ba"],
-            difficulty=data["diff"],
+            difficulty_name=data["diff"],
             pp=data["pp"],
             acc=data["acc"],
             score=data["sc"],
@@ -69,45 +60,36 @@ class Play:
             grade=data["gr"],
             mods=data["mods"],
             timestamp=datetime.fromisoformat(data["at"].replace("Z", "+00:00")),
-            perfect=data["pf"],
-            good=data["gd"],
-            ok=data["ok"],
-            misses=data["ms"],
-            star_rating=data["sr"],
-            length=data["len"],
-            od=data["od"],
-            bpm=data["bpm"],
-            mapper_id=data["mid"],
-            mapper=data["mn"]
+            judgements=Judgements.from_dict(data["judgments"])
         )
 
 
 @dataclass
 class RecentActivity:
     type: str
-    beatmap_id: str
+    version: int | None
+    mapset_id: str
     timestamp: datetime
     beatmap_title: str
     beatmap_artist: str
     taken_by_user_id: str | None
-    difficulty: str | None
+    difficulty_name: str | None
     taken_by_username: str | None
     pp: float | int | None
-    version: int | None
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
             type=data["type"],
-            beatmap_id=data["beatmapId"],
-            difficulty=data.get("difficultyName"),
+            version=data.get("version"),
+            mapset_id=data["beatmapId"],
+            timestamp=datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00")),
             beatmap_title=data["beatmapTitle"],
             beatmap_artist=data["beatmapArtist"],
             taken_by_user_id=data.get("takenByUserId"),
+            difficulty_name=data.get("difficultyName"),
             taken_by_username=data.get("takenByUsername"),
-            timestamp=datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00")),
-            pp=data.get("pp"),
-            version=data.get("version"),
+            pp=data.get("pp")
         )
 
 
@@ -115,99 +97,93 @@ class RecentActivity:
 class UserProfile:
     user_id: str
     username: str
-    # username_lower: str
     country: str
     region: str | None
-    # total_pp: float| int
     pp: float | int
-    accuracy: float | int
+    acc: float | int
     play_count: int
-    # total_plays: int
-    total_score: int
     ranked_score: int
     play_time: int
-    # total_play_time: int
-    # level: int
-    # experience: int
     grades: Grades
-    play_heatmap: dict
     recent_activity: list[RecentActivity]
     rank_history: list[RankHistoryEntry]
     top_plays: list[Play]
-    # top_plays_expanded: list[TopPlays]
-    top_plays_count: int
-    top_plays_format: str
     recent_plays: list[Play]
-    recent_plays_format: str
     profile_description: str
     follower_count: int
-    following_count: int
     profile_picture_url: str
     global_rank: int
     country_rank: int
     created_at: datetime
-
-    # profile_picture_version: str | None
-    # profile_picture_updated_at: datetime
-    # last_pp_recalculation: datetime
-    # last_ranked_score_recalculation: datetime
-    # last_top_plays_update: datetime
-    # last_updated: datetime
-    # raw_pp: float | int | None
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
             user_id=data["userId"],
             username=data["username"],
-            # total_plays=data["totalPlays"],
-            # level=data["level"],
-            # experience=data["experience"],
-            # total_play_time=data["totalPlaytime"],
             country=data["country"],
             region=data["region"],
-            created_at=data["createdAt"],
-            recent_plays_format=data["recentPlaysFormat"],
-            top_plays_format=data["topPlaysFormat"],
-            profile_picture_url=data["profilePictureUrl"],
-            # profile_picture_version=data.get("profilePictureVersion"),
-            # profile_picture_updated_at=data["profilePictureUpdatedAt"],
-            # username_lower=data["usernameLower"],
-            top_plays_count=data["topPlaysCount"],
-            # last_pp_recalculation=data["lastPPRecalculation"],
-            # last_ranked_score_recalculation=data["lastRankedScoreRecalculation"],
-            rank_history=data["rankHistory"],
-            # last_top_plays_update=data["lastTopPlaysUpdate"],
-            # last_updated=data["lastUpdated"],
-            # raw_pp=data.get("rawPP"),
-            global_rank=data["globalRank"],
-            country_rank=data["countryRank"],
-            pp=data["pp"],
+            pp=data["totalPP"],
+            acc=data["accuracy"],
             play_count=data["playCount"],
-            accuracy=data["accuracy"],
-            # total_pp=data["totalPP"],
+            ranked_score=data["rankedScore"],
             play_time=data["playTime"],
             grades=data["grades"],
-            recent_plays=data["recentPlays"],
-            ranked_score=data["rankedScore"],
-            total_score=data["totalScore"],
-            top_plays=data["topPlays"],
-            play_heatmap=data["playHeatmap"],
             recent_activity=data["recentActivity"],
-            # top_plays_expanded=data["topPlaysExpanded"],
+            rank_history=data["rankHistory"],
+            top_plays=data["topPlays"],
+            recent_plays=data["recentPlays"],
             profile_description=data["profileDescription"],
             follower_count=data["followerCount"],
-            following_count=data["followingCount"]
+            profile_picture_url=data["profilePictureUrl"],
+            global_rank=data["globalRank"],
+            country_rank=data["countryRank"],
+            created_at=data["createdAt"]
         )
 
 
 @dataclass
 class Score:
+    rank: int | None
     score_id: str
-    beatmap_id: str
+    user_id: str
+    username: str
+    pp: float | int
+    acc: float | int
+    score: int
+    combo: int
+    grade: str
+    mods: list[str]
+    timestamp: datetime
+    judgements: Judgements
+    replay_id: str
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            rank=data.get("rank"),
+            score_id=data["sid"],
+            user_id=data["uid"],
+            username=data["username"],
+            pp=data["pp"],
+            acc=data["acc"],
+            score=data["sc"],
+            combo=data["cb"],
+            grade=data["gr"],
+            mods=data["mods"],
+            timestamp=datetime.fromisoformat(data["at"].replace("Z", "+00:00")),
+            judgements=Judgements.from_dict(data["judgments"]),
+            replay_id=data["replayId"]
+        )
+
+
+@dataclass
+class FirstPlaceScore:
+    score_id: str
+    mapset_id: str
     beatmap_title: str
     beatmap_artist: str
-    difficulty: str
+    difficulty_name: str
     acc: float | int
     pp: float | int
     score: int
@@ -215,16 +191,17 @@ class Score:
     mods: list[str]
     combo: int
     grade: str
+    judgements: Judgements
     tied_for_first: bool
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
             score_id=data["sid"],
-            beatmap_id=data["bid"],
+            mapset_id=data["bid"],
             beatmap_title=data["bt"],
             beatmap_artist=data["ba"],
-            difficulty=data["diff"],
+            difficulty_name=data["diff"],
             acc=data["acc"],
             pp=data["pp"],
             score=data["score"],
@@ -232,44 +209,35 @@ class Score:
             mods=data["mods"],
             combo=data["cb"],
             grade=data["gr"],
-            tied_for_first=data["isTiedFor1st"],
+            judgements=Judgements.from_dict(data["judgments"]),
+            tied_for_first=data["isTiedFor1st"]
         )
-
-
-@dataclass
-class FirstPlaceScores:
-    scores: list[Score]
-    count: int
 
 
 @dataclass
 class MostPlayedBeatmap:
-    beatmap_id: str
-    # mapset_id: str
+    mapset_id: str
     beatmap_artist: str
     beatmap_title: str
-    difficulty: str
+    difficulty_name: str
     background_image_url: str
     play_count: int
-    last_played: datetime
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            beatmap_id=data["beatmapId"],
-            # mapset_id=data["mapsetId"],
+            mapset_id=data["mapsetId"],
             beatmap_artist=data["artist"],
             beatmap_title=data["title"],
-            difficulty=data["difficultyName"],
+            difficulty_name=data["difficultyName"],
             background_image_url=data["backgroundImageUrl"],
-            play_count=data["playCount"],
-            last_played=data["lastPlayed"]
+            play_count=data["playCount"]
         )
 
 
 @dataclass
-class CustomDifficulty:
-    beatmap_id: str
+class Difficulty:
+    difficulty_id: str
     difficulty_name: str
     star_rating: int
     star_rating_dt: int
@@ -287,35 +255,35 @@ class CustomDifficulty:
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            beatmap_id=data["diffId"],
+            difficulty_id=data["diffId"],
             difficulty_name=data["name"],
-            od=data["overallDifficulty"],
             star_rating=data["starRating"],
             star_rating_dt=data["starRatingNC"],
-            od_dt=data["overallDifficultyNC"],
             star_rating_ht=data["starRatingHT"],
+            od=data["overallDifficulty"],
+            od_dt=data["overallDifficultyNC"],
             od_ht=data["overallDifficultyHT"],
+            note_count=data["noteCount"],
             tap_count=data["tapCount"],
             catch_count=data["catchCount"],
             hold_count=data["holdCount"],
             typing_count=data["typingCount"],
-            length=data["length"],
-            note_count=data["noteCount"],
+            length=data["length"]
         )
 
 
 @dataclass
 class VersionHistory:
-    version: int
     type: str
+    version: int
     timestamp: datetime | None
     patch_notes: str | None
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            version=data["version"],
             type=data["type"],
+            version=data["version"],
             timestamp=parse_timestamp(data["timestamp"]),
             patch_notes=data.get("patchNotes")
         )
@@ -344,76 +312,58 @@ class Beatmap:
     background_image_url: str
     background_urls: list[str]
     rtm_url: str
-    rtm_size: int
     version: int
     play_count: int
-    download_count: int
     favorite_count: int
     nomination_count: int
     version_history: list[VersionHistory]
-    nominations: list[Nominator]
+    nominations: list[BeatmapNominator]
     difficulty_play_counts: dict
     uploaded_at: datetime
     ranked_date: datetime | None
     qualified_date: datetime | None
-    last_played: datetime
-    difficulties: list[CustomDifficulty]
     nominated_at: datetime | None
-
-    # beatmap_id: str
-    # search_text: str
-    # search_tokens: list[str]
-    # # uploaded_by: str
-    # # rating: int
-    # # rating_count: int
-    # last_updated: datetime
+    difficulties: list[Difficulty]
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            # beatmap_id=data["id"],
             mapset_id=data["mapsetId"],
             beatmap_title=data["songName"],
             beatmap_artist=data["artistName"],
             mapper=data["mapper"],
             mapper_id=data["mapperId"],
+            bpm=data["bpm"],
+            duration=data["duration"],
+            offset=data["offset"],
+            preview_time=data["previewTime"],
+            status=data["status"],
+            ranked=data["ranked"],
             description=data["description"],
             tags=data["tags"],
             language=data["language"],
             explicit=data["explicit"],
-            bpm=data["bpm"],
-            offset=data["offset"],
-            preview_time=data["previewTime"],
-            duration=data["duration"],
-            rtm_url=data["rtmUrl"],
-            audio_preview_url=data["audioPreviewUrl"],
-            background_urls=data["backgroundUrls"],
-            background_image_url=data["backgroundImageUrl"],
-            version=data["version"],
             has_video=data["hasVideo"],
             has_custom_hitsounds=data["hasCustomHitsounds"],
-            rtm_size=data["rtmSize"],
-            # search_text=data["searchText"],
-            # search_tokens=data["searchTokens"],
-            # uploaded_by=data["uploadedBy"],
-            download_count=data["downloadCount"],
-            status=data["status"],
-            # rating=data["rating"],
-            # rating_count=data["ratingCount"],
-            difficulty_play_counts=data["difficultyPlayCounts"],
-            version_history=data["versionHistory"],
-            # last_updated=data["lastUpdatedAt"],
-            uploaded_at=datetime.fromisoformat(data["uploadedAt"].replace("Z", "+00:00")),
-            favorite_count=data["favoriteCount"],
-            difficulties=data["difficulties"],
+            audio_preview_url=data["audioPreviewUrl"],
+            background_image_url=data["backgroundImageUrl"],
+            background_urls=data["backgroundUrls"],
+            rtm_url=data["rtmUrl"],
+            version=data["version"],
             play_count=data["playCount"],
-            last_played=data["lastPlayed"],
-            ranked=data["ranked"],
+            favorite_count=data["favoriteCount"],
             nomination_count=data["nominationCount"],
-            nominations=data["nominations"],
-            nominated_at=data.get("nominatedAt"),
+            version_history=data["versionHistory"],
+            nominations=[
+                BeatmapNominator.from_dict(item)
+                for item in data.get("nominations", [])
+            ],
+            difficulty_play_counts=data["difficultyPlayCounts"],
+            uploaded_at=datetime.fromisoformat(data["uploadedAt"].replace("Z", "+00:00")),
             ranked_date=parse_timestamp(data.get("rankedDate")),
-            qualified_date=parse_timestamp(data.get("qualifiedDate"))
+            qualified_date=parse_timestamp(data.get("qualifiedDate")),
+            nominated_at=data.get("nominatedAt"),
+            difficulties=data["difficulties"]
         )
 
 
@@ -435,7 +385,7 @@ class BeatmapList:
 
 
 @dataclass
-class Nominator:
+class BeatmapNominator:
     nominator_id: str
     nominator_username: str
     nominated_at: datetime | None
@@ -445,103 +395,8 @@ class Nominator:
         return cls(
             nominator_id=data["nominatorId"],
             nominator_username=data["nominatorUsername"],
-            nominated_at=parse_timestamp(data["nominatedAt"]),
+            nominated_at=parse_timestamp(data.get("nominatedAt")),
         )
-
-
-# @dataclass
-# class NominatedBeatmaps:
-#     beatmap_id: str
-#     # mapset_id: str
-#     beatmap_title: str
-#     beatmap_artist: str
-#     mapper: str
-#     mapper_id: str
-#     description: str
-#     tags: str
-#     language: str
-#     explicit: bool
-#     bpm: float | int
-#     offset: int
-#     preview_time: int
-#     duration: float | int
-#     rtm_url: str
-#     audio_preview_url: str
-#     background_urls: list[str]
-#     background_image_url: str
-#     version: int
-#     has_video: bool
-#     has_custom_hitsounds: bool
-#     rtm_size: int
-#     search_text: str
-#     search_tokens: list[str]
-#     uploaded_by: str
-#     uploaded_at: datetime | None
-#     download_count: int
-#     favorite_count: int
-#     # rating: int
-#     # rating_count: int
-#     # difficulty_play_counts: dict
-#     version_history: list[VersionHistory]
-#     last_updated_at: datetime | None
-#     qualified_by_username: str
-#     qualified_date: datetime | None
-#     nomination_count: int
-#     qualified_by: str
-#     nominations: list[Nominator]
-#     status: str
-#     difficulties: list[CustomDifficulty]
-#     play_count: int
-#     last_played: datetime | None
-#     nominated_at: datetime | None
-#
-#     @classmethod
-#     def from_dict(cls, data: dict):
-#         return cls(
-#             beatmap_id=data["id"],
-#             # mapset_id=data["mapsetId"],
-#             beatmap_title=data["songName"],
-#             beatmap_artist=data["artistName"],
-#             mapper=data["mapper"],
-#             mapper_id=data["mapperId"],
-#             description=data["description"],
-#             tags=data["tags"],
-#             language=data["language"],
-#             explicit=data["explicit"],
-#             bpm=data["bpm"],
-#             offset=data["offset"],
-#             preview_time=data["previewTime"],
-#             duration=data["duration"],
-#             rtm_url=data["rtmUrl"],
-#             audio_preview_url=data["audioPreviewUrl"],
-#             background_urls=data["backgroundUrls"],
-#             background_image_url=data["backgroundImageUrl"],
-#             version=data["version"],
-#             has_video=data["hasVideo"],
-#             has_custom_hitsounds=data["hasCustomHitsounds"],
-#             rtm_size=data["rtmSize"],
-#             search_text=data["searchText"],
-#             search_tokens=data["searchTokens"],
-#             uploaded_by=data["uploadedBy"],
-#             uploaded_at=parse_timestamp(data["uploadedAt"]),
-#             download_count=data["downloadCount"],
-#             favorite_count=data["favoriteCount"],
-#             # rating=data["rating"],
-#             # rating_count=data["ratingCount"],
-#             # difficulty_play_counts=data["difficultyPlayCounts"],
-#             version_history=data["versionHistory"],
-#             last_updated_at=parse_timestamp(data["lastUpdatedAt"]),
-#             qualified_by_username=data["qualifiedByUsername"],
-#             qualified_date=parse_timestamp(data["qualifiedDate"]),
-#             nomination_count=data["nominationCount"],
-#             qualified_by=data["qualifiedBy"],
-#             nominations=data["nominations"],
-#             status=data["status"],
-#             difficulties=data["difficulties"],
-#             play_count=data["playCount"],
-#             last_played=parse_timestamp(data["lastPlayed"]),
-#             nominated_at=parse_timestamp(data["nominatedAt"]),
-#         )
 
 
 @dataclass
@@ -550,7 +405,7 @@ class GlobalLeaderboard:
     user_id: str
     username: str
     pp: float | int
-    accuracy: float | int
+    acc: float | int
     play_count: int
     play_time: int
     ranked_score: int
@@ -562,18 +417,18 @@ class GlobalLeaderboard:
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            accuracy=data["accuracy"],
             rank=data["rank"],
-            pp=data["totalPP"],
-            ranked_score=data["rankedScore"],
             user_id=data["userId"],
-            previous_rank=data["previousRank"],
-            profile_picture_url=data["profilePictureUrl"],
-            country=data["country"],
             username=data["username"],
+            pp=data["totalPP"],
+            acc=data["accuracy"],
+            play_count=data["playCount"],
             play_time=data["playTime"],
+            ranked_score=data["rankedScore"],
+            country=data["country"],
+            profile_picture_url=data["profilePictureUrl"],
             rank_change=data["rankChange"],
-            play_count=data["playCount"]
+            previous_rank=data["previousRank"]
         )
 
 
@@ -581,24 +436,20 @@ class GlobalLeaderboard:
 class CountryLeaderboard:
     rank: int
     country_code: str
-    country_name: str
     total_pp: int
     total_score: int
     total_play_count: int
     player_count: int
-    last_updated: datetime | None
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            last_updated=parse_timestamp(data["lastUpdated"]),
+            rank=data["rank"],
             country_code=data["countryCode"],
-            player_count=data["playerCount"],
-            total_score=data["totalScore"],
-            country_name=data["countryName"],
-            total_play_count=data["totalPlayCount"],
             total_pp=data["totalPP"],
-            rank=data["rank"]
+            total_score=data["totalScore"],
+            total_play_count=data["totalPlayCount"],
+            player_count=data["playerCount"]
         )
 
 
@@ -606,96 +457,57 @@ class CountryLeaderboard:
 class TopPlaysLeaderboard:
     rank: int
     score_id: str
-    beatmap_id: str
+    mapset_id: str
     difficulty_id: str
     username: str
     beatmap_title: str
     beatmap_artist: str
     difficulty_name: str
     pp: float | int
-    accuracy: float | int
-    score: int
+    acc: float | int
     max_combo: int
-    grade: str
     mods: list[str]
     played_at: datetime | None
     user_id: str
     country: str
     profile_picture_url: str
+    judgements: Judgements
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
             rank=data["rank"],
+            score_id=data["scoreId"],
+            mapset_id=data["beatmapId"],
             difficulty_id=data["difficultyId"],
-            user_id=data["userId"],
+            username=data["username"],
+            beatmap_title=data["beatmapTitle"],
             beatmap_artist=data["beatmapArtist"],
             difficulty_name=data["difficultyName"],
-            username=data["username"],
+            pp=data["pp"],
+            acc=data["accuracy"],
             max_combo=data["maxCombo"],
-            country=data["country"],
             mods=data["mods"],
-            score_id=data["scoreId"],
-            score=data["score"],
-            accuracy=data["accuracy"],
-            beatmap_title=data["beatmapTitle"],
-            pp=data["pp"],
-            grade=data["grade"],
             played_at=parse_timestamp(data["playedAt"]),
-            beatmap_id=data["beatmapId"],
-            profile_picture_url=data["profilePictureUrl"]
-        )
-
-
-@dataclass
-class TopScore:
-    score_id: str
-    user_id: str
-    username: str
-    pp: float | int
-    accuracy: float | int
-    score: int
-    combo: int
-    grade: str
-    mods: list[str]
-    timestamp: datetime | None
-    judgements: Judgements
-    replay_id: str
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            score_id=data["sid"],
-            user_id=data["uid"],
-            username=data["un"],
-            pp=data["pp"],
-            accuracy=data["acc"],
-            combo=data["cb"],
-            grade=data["gr"],
-            mods=data["mods"],
-            timestamp=parse_timestamp(data["at"]),
-            judgements=Judgements.from_dict(data["jc"]),
-            replay_id=data["replayId"],
-            score=data["sc"]
+            user_id=data["userId"],
+            country=data["country"],
+            profile_picture_url=data["profilePictureUrl"],
+            judgements=Judgements.from_dict(data["judgments"])
         )
 
 
 @dataclass
 class BeatmapDifficulty:
+    difficulty_id: str
     name: str
     star_rating: float | int
-    note_count: int
-    play_count: int
-    top_score: TopScore
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
+            difficulty_id=data["id"],
             name=data["name"],
-            star_rating=data["starRating"],
-            note_count=data["noteCount"],
-            play_count=data["playCount"],
-            top_score=data["topScore"]
+            star_rating=data["starRating"]
         )
 
 
@@ -721,41 +533,6 @@ class Judgements:
 
 
 @dataclass
-class LeaderboardScore:
-    rank: int
-    score_id: str
-    user_id: str
-    username: str
-    pp: float | int
-    accuracy: float | int
-    score: int
-    combo: int
-    grade: str
-    mods: list[str]
-    timestamp: datetime | None
-    judgements: Judgements
-    replay_id: str
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            rank=data["rank"],
-            score_id=data["sid"],
-            user_id=data["uid"],
-            username=data["un"],
-            pp=data["pp"],
-            accuracy=data["acc"],
-            score=data["sc"],
-            combo=data["cb"],
-            grade=data["gr"],
-            mods=data["mods"],
-            timestamp=parse_timestamp(data["at"]),
-            judgements=Judgements.from_dict(data["jc"]),
-            replay_id=data["replayId"]
-        )
-
-
-@dataclass
 class Comment:
     comment_id: str
     beatmap_id: str
@@ -764,7 +541,7 @@ class Comment:
     profile_picture_url: str
     comment: str
     likes: int
-    # liked: bool
+    liked: bool
     timestamp: datetime | None
 
     @classmethod
@@ -777,15 +554,14 @@ class Comment:
             profile_picture_url=data["profilePictureUrl"],
             comment=data["comment"],
             likes=data["likes"],
-            # liked=data["liked"],
-            timestamp=parse_timestamp(data.get("at"))
+            liked=data["liked"],
+            timestamp=parse_timestamp(data.get("createdAt"))
         )
 
 
 @dataclass
 class UnplayedDifficulty:
-    key: str
-    beatmap_id: str
+    mapset_id: str
     beatmap_title: str
     beatmap_artist: str
     difficulty_name: str
@@ -794,8 +570,7 @@ class UnplayedDifficulty:
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            key=data["key"],
-            beatmap_id=data["beatmapId"],
+            mapset_id=data["beatmapId"],
             beatmap_title=data["beatmapTitle"],
             beatmap_artist=data["beatmapArtist"],
             difficulty_name=data["difficultyName"],
@@ -806,61 +581,64 @@ class UnplayedDifficulty:
 @dataclass
 class UnplayedDifficulties:
     unplayed: list[UnplayedDifficulty]
-    count: int
-    totalRanked: int
-    totalPlayed: int
+    total_ranked: int
+    total_played: int
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            unplayed=[
+                UnplayedDifficulty.from_dict(item)
+                for item in data["unplayed"]
+            ],
+            total_ranked=data["totalRanked"],
+            total_played=data["totalPlayed"],
+        )
 
 
 @dataclass
 class BestScore:
-    key: str
-    beatmap_id: str
+    mapset_id: str
     beatmap_title: str
     beatmap_artist: str
     difficulty_name: str
     difficulty_id: str
     score: int
     pp: float | int
-    accuracy: float | int
+    acc: float | int
     max_combo: int
     grade: str
     best_grade: str
     mods: list[str]
     played_at: datetime | None
     updated_at: datetime | None
+    judgements: Judgements
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
-            key=data["difficultyKey"],
-            beatmap_id=data["beatmapId"],
+            mapset_id=data["beatmapId"],
             beatmap_title=data["beatmapTitle"],
             beatmap_artist=data["beatmapArtist"],
             difficulty_name=data["difficultyName"],
             difficulty_id=data["difficultyId"],
             score=data["score"],
             pp=data["pp"],
-            accuracy=data["accuracy"],
+            acc=data["accuracy"],
             max_combo=data["maxCombo"],
             grade=data["grade"],
             best_grade=data["bestGrade"],
             mods=data["mods"],
             played_at=parse_timestamp(data["playedAt"]),
-            updated_at=parse_timestamp(data["updatedAt"])
+            updated_at=parse_timestamp(data["updatedAt"]),
+            judgements=Judgements.from_dict(data["judgments"])
         )
-
-
-@dataclass
-class BestScores:
-    scores: list[BestScore]
-    count: int
 
 
 @dataclass
 class UserSearchResult:
     user_id: str
     username: str
-    display_name: str
     profile_picture: str
     total_pp: float | int
     global_rank: int
@@ -871,9 +649,44 @@ class UserSearchResult:
         return cls(
             user_id=data["userId"],
             username=data["username"],
-            display_name=data["displayName"],
             profile_picture=data["profilePicture"],
             total_pp=data["totalPP"],
             global_rank=data["globalRank"],
             country=data["country"]
+        )
+
+
+@dataclass
+class Nominator:
+    user_id: str
+    username: str
+    discord_id: int
+    is_nominator: bool
+    is_rank_manager: bool
+    is_admin: bool
+    banned: bool
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            user_id=data["userId"],
+            username=data["username"],
+            discord_id=data["discordId"],
+            is_nominator=data["isNominator"],
+            is_rank_manager=data["isRankManager"],
+            is_admin=data["isAdmin"],
+            banned=data["banned"]
+        )
+
+
+@dataclass
+class BeatmapScore:
+    position: int
+    score: Score
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            position=data["position"],
+            score=Score.from_dict(data["score"])
         )

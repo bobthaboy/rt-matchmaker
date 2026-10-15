@@ -72,7 +72,7 @@ async def achievements_check(ctx, user: Member, thread, play: Play, play2: Play,
     if state.turn > 10:
         new_chievos.append(5)
 
-    if is_fc(play, max_notes) != "" and is_fc(play2, max_notes) == "" and user != state.chooser:
+    if is_fc(play, max_notes) and is_fc(play2, max_notes) and user != state.chooser:
         new_chievos.append(6)
 
     if state.chooser != user and hp2 <= 0:

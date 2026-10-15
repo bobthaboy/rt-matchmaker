@@ -150,8 +150,8 @@ async def draft(ctx, target: Member, state: MatchState, thread) -> tuple[dict | 
 
 def recent_condition(play: Play, pick: dict, minutes: int = 0) -> bool:
     condition = (
-            play.beatmap_id == pick["beatmap_id"]
-            and play.difficulty == pick["difficulty"]
+            play.mapset_id == pick["beatmap_id"]
+            and play.difficulty_name == pick["difficulty"]
             and get_mod_type(play) == pick["mod"]
     )
 
@@ -319,7 +319,7 @@ async def results(ctx, pick: dict, competitors: list[str], target: Member, state
         await thread.send(embed=round_embed(state, score1, score2, dmg_mult, pick))
 
         # Temp logger for olc to rework shit
-        notes = play1.perfect + play1.good + play1.ok + play1.misses
+        notes = play1.judgements.perfect + play1.judgements.good + play1.judgements.ok + play1.judgements.miss
         olc_peepee_logs(play1, play2, notes)
 
         if state.is_achievements["qualified"]:
@@ -744,7 +744,7 @@ def round_embed(state: MatchState, score1: Score, score2: Score, dmg_mult: float
     loser_hp = max(loser_hp, 0)
     damage = f"{int(damage * dmg_mult):,}"
 
-    notes = winner.play.perfect + winner.play.good + winner.play.ok + winner.play.misses
+    notes = winner.play.judgements.perfect + winner.play.judgements.good + winner.play.judgements.ok + winner.play.judgements.miss
 
     if winner.play.grade == "SS":
         winner_grade = f"{grade_emotes[winner.play.grade]} "
@@ -759,13 +759,13 @@ def round_embed(state: MatchState, score1: Score, score2: Score, dmg_mult: float
     winner_combo = f"{winner.play.combo}x/{notes}x "
     loser_combo = f"{loser.play.combo}x/{notes}x "
 
-    if winner.play.misses:
-        winner_combo += f"[ {winner.play.misses}<:miss:1537210464080240740>]"
+    if winner.play.judgements.miss:
+        winner_combo += f"[ {winner.play.judgements.miss}<:miss:1537210464080240740>]"
     else:
         winner_combo += f"**FC!**"
 
-    if loser.play.misses:
-        loser_combo += f"[ {loser.play.misses}<:miss:1537210464080240740>]"
+    if loser.play.judgements.miss:
+        loser_combo += f"[ {loser.play.judgements.miss}<:miss:1537210464080240740>]"
     else:
         loser_combo += f"**FC!**"
 

@@ -1,10 +1,10 @@
 import requests
 from datetime import datetime, date
 from .helper import find_new_data, parse_timestamp
-from .models import Grades, RankHistoryEntry, Play, RecentActivity, UserProfile, Score, FirstPlaceScores, \
-    MostPlayedBeatmap, CustomDifficulty, VersionHistory, Beatmap, BeatmapList, GlobalLeaderboard, CountryLeaderboard, \
-    TopPlaysLeaderboard, BeatmapDifficulty, LeaderboardScore, Comment, UnplayedDifficulty, UnplayedDifficulties, \
-    BestScore, BestScores, UserSearchResult
+from .models import Grades, RankHistoryEntry, Play, RecentActivity, UserProfile, Score, FirstPlaceScore, \
+    MostPlayedBeatmap, Difficulty, VersionHistory, Beatmap, BeatmapList, GlobalLeaderboard, CountryLeaderboard, \
+    TopPlaysLeaderboard, BeatmapDifficulty, Comment, UnplayedDifficulties, \
+    BestScore, UserSearchResult, Nominator, BeatmapScore
 
 
 class RhythmTyperClient():
@@ -51,7 +51,7 @@ class RhythmTyperClient():
                 diff["holdCount"] = int(diff["holdCount"] / 2)
 
         song["difficulties"] = [
-            CustomDifficulty.from_dict(item)
+            Difficulty.from_dict(item)
             for item in song["difficulties"]
         ]
 
@@ -86,10 +86,10 @@ class RhythmTyperClient():
         response["lastRankedScoreRecalculation"] = parse_timestamp(response.get("lastRankedScoreRecalculation"))
         response["lastTopPlaysUpdate"] = parse_timestamp(response.get("lastTopPlaysUpdate"))
         response["lastUpdated"] = parse_timestamp(response.get("lastUpdated"))
-        response["playHeatmap"] = {
-            datetime.strptime(date_str, "%Y-%m-%d").date(): value
-            for date_str, value in response["playHeatmap"].items()
-        }
+        # response["playHeatmap"] = {
+        #     datetime.strptime(date_str, "%Y-%m-%d").date(): value
+        #     for date_str, value in response["playHeatmap"].items()
+        # }
         response["grades"] = Grades(**response["grades"])
         response["rankHistory"] = [
             RankHistoryEntry.from_dict(item)
@@ -116,15 +116,11 @@ class RhythmTyperClient():
         ]
         return UserProfile.from_dict(response)
 
-    def first_place_scores(self, user_id: str) -> FirstPlaceScores:
+    def first_place_scores(self, user_id: str) -> list[FirstPlaceScore]:
         """Returns all the first place scores of a user."""
         response = self.get(f"v2/user/{user_id}/firstPlaceScores")
 
-        response["scores"] = [
-            Score.from_dict(item)
-            for item in response["scores"]
-        ]
-        return FirstPlaceScores(**response)
+        return [FirstPlaceScore.from_dict(s) for s in response["scores"]]
 
     def activity_heatmap(self, user_id: str) -> dict[date, int]:
         """Returns a dictionary containing a date as the key and play count as the value."""
@@ -178,7 +174,7 @@ class RhythmTyperClient():
                     diff["holdCount"] = int(diff["holdCount"] / 2)
 
             song["difficulties"] = [
-                CustomDifficulty.from_dict(item)
+                Difficulty.from_dict(item)
                 for item in song["difficulties"]
             ]
 
@@ -215,7 +211,7 @@ class RhythmTyperClient():
                     diff["holdCount"] /= 2
 
             song["difficulties"] = [
-                CustomDifficulty.from_dict(item)
+                Difficulty.from_dict(item)
                 for item in song["difficulties"]
             ]
 
@@ -234,7 +230,7 @@ class RhythmTyperClient():
         song_list = response.get("beatmaps", [])
         for song in song_list:
             song["difficulties"] = [
-                CustomDifficulty.from_dict(item)
+                Difficulty.from_dict(item)
                 for item in song.get("difficulties", [])
             ]
 
@@ -285,7 +281,7 @@ class RhythmTyperClient():
             sortBy=sort
         )
 
-        return [CountryLeaderboard.from_dict(item) for item in response["countries"]]
+        return [CountryLeaderboard.from_dict(c) for c in response["countries"]]
 
     def leaderboard_top_plays(self, limit: int = 50, offset: int = 0, unique: bool = False) -> list[
         TopPlaysLeaderboard]:
@@ -305,7 +301,7 @@ class RhythmTyperClient():
 
         return [BeatmapDifficulty.from_dict(item) for item in response]
 
-    def beatmap_leaderboard(self, beatmap_id: str, difficulty: str, limit: int = 50) -> list[LeaderboardScore]:
+    def beatmap_leaderboard(self, beatmap_id: str, difficulty: str, limit: int = 50) -> list[Score]:
         """Returns the leaderboards for a beatmap."""
         response = self.get(
             f"v2/beatmap/{beatmap_id}/leaderboard",
@@ -313,7 +309,7 @@ class RhythmTyperClient():
             limit=limit
         )
 
-        return [LeaderboardScore.from_dict(item) for item in response]
+        return [Score.from_dict(item) for item in response]
 
     def beatmap_comments(self, beatmap_id: str, limit: int = 50) -> list[Comment]:
         """Returns the comments on a mapset."""
@@ -332,15 +328,37 @@ class RhythmTyperClient():
             limit=limit
         )
 
-        response["unplayed"] = [UnplayedDifficulty.from_dict(item) for item in response["unplayed"]]
-        return UnplayedDifficulties(**response)
+        return UnplayedDifficulties.from_dict(response)
 
-    def user_best_scores(self, user_id: str, limit: int = 100) -> BestScores:
+    def user_best_scores(self, user_id: str, limit: int = 100) -> list[BestScore]:
         """Returns the user's best scores by highest Ranked Score."""
         response = self.get(
             f"v2/user/{user_id}/bestScores",
             limit=limit
         )
 
-        response["scores"] = [BestScore.from_dict(item) for item in response["scores"]]
-        return BestScores(**response)
+        return [BestScore.from_dict(score) for score in response["scores"]]
+
+    def nominators(self) -> list[Nominator]:
+        """Returns all the nominators and their permissions."""
+        response = self.get(
+            f"v2/nominators"
+        )
+
+        return [Nominator.from_dict(n) for n in response["nominators"]]
+
+    def user_beatmap_score(self, user_id, difficulty_id) -> BeatmapScore:
+        """Returns Score structure for user's top score by scorev1."""
+        response = self.get(
+            f"v2/beatmaps/{difficulty_id}/scores/users/{user_id}"
+        )
+
+        return BeatmapScore(**response)
+
+    def user_beatmap_scores(self, user_id, difficulty_id) -> list[Score]:
+        """Returns a list of Score structure for all user's plays, sorted by scorev1."""
+        response = self.get(
+            f"v2/beatmaps/{difficulty_id}/scores/users/{user_id}/all"
+        )
+
+        return [Score.from_dict(item) for item in response["scores"]]

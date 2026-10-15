@@ -12,22 +12,24 @@ rt = RhythmTyperClient()
 
 
 async def grab_maps():
-    print("Grabbing maps...")
     beatmaps = []
+    statuses = ["ranked", "loved"]
 
-    command = rt.get_beatmaps()
-    await sleep(1)
-
-    beatmaps.extend(command.beatmaps)
-
-    while True:
-        command = rt.get_beatmaps(cursor=command.next_cursor)
+    for status in statuses:
+        command = rt.get_beatmaps(status=status)
         await sleep(1)
 
         beatmaps.extend(command.beatmaps)
 
-        if not command.has_more:
-            break
+        # if command.has_more:
+        #     while True:
+        #         command = rt.get_beatmaps(status=status, cursor=command.next_cursor)
+        #         await sleep(1)
+        #
+        #         beatmaps.extend(command.beatmaps)
+        #
+        #         if not command.has_more:
+        #             break
 
     i = 0
     playable_maps = {}
@@ -75,7 +77,7 @@ async def initialize():
         if first.score == leaderboard[1].score:
             tied = True
 
-            if first.accuracy == 100 and dt:
+            if first.acc == 100 and dt:
                 perfect = True
 
         jc = first.judgements
@@ -99,7 +101,7 @@ async def initialize():
                 "player": first.username,
                 "player_id": first.user_id,
                 "score": first.score,
-                "accuracy": first.accuracy,
+                "accuracy": first.acc,
                 "dt": dt,
                 "pp": first.pp,
                 "combo": first.combo,
@@ -129,16 +131,19 @@ async def add_maps():
         perfect = False
         tied = False
 
-        leaderboard = rt.beatmap_leaderboard(mapset["mapset_id"], mapset["difficulty"])
-        await sleep(1)
-        first = leaderboard[0]
-        dt = is_dt(first)
+        try:
+            leaderboard = rt.beatmap_leaderboard(mapset["mapset_id"], mapset["difficulty"])
+            await sleep(1)
+            first = leaderboard[0]
+            dt = is_dt(first)
 
-        if first.score == leaderboard[1].score:
-            tied = True
+            if first.score == leaderboard[1].score:
+                tied = True
 
-            if first.accuracy == 100 and dt:
-                perfect = True
+                if first.acc == 100 and dt:
+                    perfect = True
+        except IndexError:
+            continue
 
         jc = first.judgements
         notes = jc.perfect + jc.good + jc.ok + jc.miss
@@ -161,7 +166,7 @@ async def add_maps():
                 "player": first.username,
                 "player_id": first.user_id,
                 "score": first.score,
-                "accuracy": first.accuracy,
+                "accuracy": first.acc,
                 "dt": dt,
                 "pp": first.pp,
                 "combo": first.combo,
@@ -172,7 +177,7 @@ async def add_maps():
         json.dump(score_data, f, indent=4)
 
 
-@bot.command(name="unique")
+@bot.command(name="unique", aliases=["uniques"])
 async def rank_placements(ctx, page: int = 1):
     if page < 1:
         return
@@ -194,7 +199,7 @@ async def rank_placements(ctx, page: int = 1):
         message += f"{i + cursor}. {player} - {percentage:.2f}% ({count})\n"
 
     embed = Embed(
-        title=f"Unqiue #1 Scores Count",
+        title=f"Unique #1 Scores Count",
         description=message
     )
 
@@ -254,6 +259,8 @@ async def look_for_new():
     scores = [score["play"] for score in score_data.values() if score["play"]]
     players = {score["player_id"] for score in scores}
 
+    await add_maps()
+
     for player in players:
         user_recents = rt.get_user_profile(player).recent_activity
         await sleep(1)
@@ -262,25 +269,27 @@ async def look_for_new():
             if item.type == "lost_first_place":
                 play_id = next(
                     (play_id for play_id, play in score_data.items()
-                     if play["difficulty"] == item.difficulty
-                     and play["mapset_id"] == item.beatmap_id),
+                     if play["difficulty"] == item.difficulty_name
+                     and play["mapset_id"] == item.mapset_id),
                     None
                 )
 
-                if not play_id:
-                    await add_maps()
-                    play_id = next(
-                        (play_id for play_id, play in score_data.items()
-                         if play["difficulty"] == item.difficulty
-                         and play["mapset_id"] == item.beatmap_id),
-                        None
-                    )
+                # if not play_id:
+                #     await add_maps()
+                #     play_id = next(
+                #         (play_id for play_id, play in score_data.items()
+                #          if play["difficulty"] == item.difficulty
+                #          and play["mapset_id"] == item.beatmap_id),
+                #         None
+                #     )
 
                 play_id = str(play_id)
 
                 try:
                     timestamp = datetime.fromisoformat(score_data[play_id]["play"]["timestamp"])
                 except TypeError:
+                    continue
+                except KeyError:
                     continue
 
                 if item.timestamp <= timestamp + timedelta(seconds=5):
@@ -295,13 +304,16 @@ async def look_for_new():
 
                 leaderboard = rt.beatmap_leaderboard(mapset_id, difficulty)
                 await sleep(1)
-                first = leaderboard[0]
+                try:
+                    first = leaderboard[0]
+                except IndexError:
+                    continue
                 dt = is_dt(first)
 
                 if first.score == leaderboard[1].score:
                     score_data[play_id]["tied"] = True
 
-                    if first.accuracy == 100 and dt:
+                    if first.acc == 100 and dt:
                         score_data[play_id]["perfect"] = True
                         score_data[play_id]["play"] = None
                         continue
@@ -310,12 +322,53 @@ async def look_for_new():
                     "player": first.username,
                     "player_id": first.user_id,
                     "score": first.score,
-                    "accuracy": first.accuracy,
+                    "accuracy": first.acc,
                     "dt": dt,
                     "pp": first.pp,
                     "combo": first.combo,
                     "timestamp": first.timestamp.isoformat()
                 }
 
+    perfects = [
+        (i, beatmap)
+        for (i, beatmap) in score_data.items()
+        if beatmap.get("play") is not None
+           and beatmap["play"]["accuracy"] == 100
+    ]
+
+    for (i, beatmap) in perfects:
+        perfect = False
+        tied = False
+
+        leaderboard = rt.beatmap_leaderboard(beatmap["mapset_id"], beatmap["difficulty"])
+        await sleep(1)
+        first = leaderboard[0]
+        dt = is_dt(first)
+
+        if first.score == leaderboard[1].score:
+            tied = True
+
+            if first.acc == 100 and dt:
+                perfect = True
+
+        score_data[i]["perfect"] = perfect
+        score_data[i]["tied"] = tied
+
+        if perfect:
+            score_data[i]["play"] = None
+        else:
+            score_data[i]["play"] = {
+                "player": first.username,
+                "player_id": first.user_id,
+                "score": first.score,
+                "accuracy": first.acc,
+                "dt": dt,
+                "pp": first.pp,
+                "combo": first.combo,
+                "timestamp": first.timestamp.isoformat()
+            }
+
     with open("data/first_place_scores.json", "w") as f:
         json.dump(score_data, f, indent=4)
+
+    cmd_log("Got new!")

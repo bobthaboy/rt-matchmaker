@@ -152,7 +152,7 @@ async def check_profile(ctx, target: Member | None = None) -> None:
     if target:
         cur_user = target
 
-    if target.bot:
+    if cur_user.bot:
         await ctx.reply("Dumbfuck.")
         return
 
